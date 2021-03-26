@@ -20,6 +20,24 @@ class DetectionLayer(nn.Module):
         self.anchors = anchors
 
 
+# 预处理图像
+# 颜色通道的顺序为 BGR
+# PyTorch 的图像输入格式是（batch x 通道 x 高度 x 宽度），其通道顺序为 RGB
+def prep_image(img, inp_dim):
+    """
+    Prepare image for inputting to the neural network
+
+    Returns a Variable
+    """
+
+    img = cv2.resize(img, (inp_dim, inp_dim))
+    img = img[:, :, ::-1].transpose((2, 0, 1)).copy()
+    #添加batch维度
+    img = torch.from_numpy(img).float().div(255.0).unsqueeze(0)
+
+    return img
+
+
 # 解析配置文件
 def parse_cfg(cfgfile):
     """
@@ -380,7 +398,7 @@ def write_results(prediction, confidence, num_classes, nms_conf=0.4):
                 non_zero_ind = torch.nonzero(image_pred_class[:, 4]).squeeze()
                 image_pred_class = image_pred_class[non_zero_ind].view(-1, 7)
 
-            #Repeat the batch_id for as many detections of class cls in the image
+            # Repeat the batch_id for as many detections of class cls in the image
             batch_ind = image_pred_class.new(image_pred_class.size(0), 1).fill_(ind)
             seq = batch_ind, image_pred_class
 
@@ -394,6 +412,8 @@ def write_results(prediction, confidence, num_classes, nms_conf=0.4):
         return output
     except:
         return 0
+
+
 if __name__ == "__main__":
     blocks = parse_cfg('./cfg/yolov3.cfg')
     print(create_modules(blocks))
